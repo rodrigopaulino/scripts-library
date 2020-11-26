@@ -1,0 +1,254 @@
+if [ -z ${MYSQL_DUMPS_DIR+x} ]; then
+	read -p "Please provide the full path where your MySQL dump files are located: " MYSQL_DUMPS_DIR
+
+	export MYSQL_DUMPS_DIR
+fi
+
+export MYSQL_DUMPS_BLACK='\033[0;30m'
+export MYSQL_DUMPS_RED='\033[0;31m'
+export MYSQL_DUMPS_GREEN='\033[0;32m'
+export MYSQL_DUMPS_BROWN='\033[0;33m'
+export MYSQL_DUMPS_BLUE='\033[0;34m'
+export MYSQL_DUMPS_PURPLE='\033[0;35m'
+export MYSQL_DUMPS_CYAN='\033[0;36m'
+export MYSQL_DUMPS_GRAY='\033[1;30m'
+export MYSQL_DUMPS_LRED='\033[1;31m'
+export MYSQL_DUMPS_LGREEN='\033[1;32m'
+export MYSQL_DUMPS_YELLOW='\033[1;33m'
+export MYSQL_DUMPS_LBLUE='\033[1;34m'
+export MYSQL_DUMPS_LPURPLE='\033[1;35m'
+export MYSQL_DUMPS_LCYAN='\033[1;36m'
+export MYSQL_DUMPS_WHITE='\033[1;37m'
+export MYSQL_DUMPS_NC='\033[0m'
+
+#-----LISTS ALL MYSQL DATABASES-----#
+alias ldb="mysql --user=root --execute=\"SHOW DATABASES\G\" | sed -e 's#^Database: ##' | awk 'NR % 2 == 0 && !/information_schema|mysql|sys|performance_schema/ { print }';"
+
+#-----CLEANS A MYSQL DATABASE-----#
+function cdb {
+	echo -e "${MYSQL_DUMPS_GREEN}##--CLEAN DATABASE--##${MYSQL_DUMPS_NC}"
+
+	if [ -z ${1+x} ]; then
+		prompt="${MYSQL_DUMPS_YELLOW}Please select a MySQL database:${MYSQL_DUMPS_NC}"
+		options=( `ldb` )
+
+		echo -e ${prompt};
+
+		select schema in "${options[@]}" "Quit" ; do 
+			if (( REPLY == 1 + ${#options[@]} )) ; then
+				echo -e "${MYSQL_DUMPS_LBLUE}Bye bye!${MYSQL_DUMPS_NC}"
+
+				return
+			elif (( REPLY > 0 && REPLY <= ${#options[@]} )) ; then
+				mysql --user=root --execute="DROP DATABASE ${schema}; CREATE SCHEMA ${schema} DEFAULT CHARACTER SET utf8;";
+
+				break
+			else
+				echo -e "${MYSQL_DUMPS_RED}This is not an option.${MYSQL_DUMPS_NC}"
+			fi
+		done
+	else
+		schema=$1
+
+		mysql --user=root --execute="DROP DATABASE ${schema}; CREATE SCHEMA ${schema} DEFAULT CHARACTER SET utf8;";
+	fi
+
+	if [ $? -eq 0 ]; then
+		echo  -e "You successfully cleaned the database ${MYSQL_DUMPS_PURPLE}${schema}${MYSQL_DUMPS_NC}."
+	fi
+}
+
+#-----DROPS A MYSQL DATABASE-----#
+function ddb {
+	echo -e "${MYSQL_DUMPS_GREEN}##--DROP DATABASE--##${MYSQL_DUMPS_NC}"
+
+	if [ -z ${1+x} ]; then
+		prompt="${MYSQL_DUMPS_YELLOW}Please select a MySQL database:${MYSQL_DUMPS_NC}"
+		options=( `ldb` )
+
+		echo -e ${prompt};
+
+		select schema in "${options[@]}" "Quit" ; do 
+			if (( REPLY == 1 + ${#options[@]} )) ; then
+				echo -e "${MYSQL_DUMPS_LBLUE}Bye bye!${MYSQL_DUMPS_NC}"
+
+				return
+			elif (( REPLY > 0 && REPLY <= ${#options[@]} )) ; then
+				mysql --user=root --execute="DROP DATABASE ${schema};";
+
+				break
+			else
+				echo -e "${MYSQL_DUMPS_RED}This is not an option.${MYSQL_DUMPS_NC}"
+			fi
+		done
+	else
+		schema=$1
+
+		mysql --user=root --execute="DROP DATABASE ${schema};";
+	fi
+
+	if [ $? -eq 0 ]; then
+		echo  -e "You successfully dropped the database ${MYSQL_DUMPS_PURPLE}${schema}${MYSQL_DUMPS_NC}."
+	fi
+}
+
+#-----EXPORTS A MYSQL DATABASE-----#
+function edb {
+	echo -e "${MYSQL_DUMPS_GREEN}##--EXPORT DATABASE--##${MYSQL_DUMPS_NC}"
+
+	if [ -z ${1+x} ]; then
+		prompt="${MYSQL_DUMPS_YELLOW}Please select a MySQL database:${MYSQL_DUMPS_NC}"
+		options=( `ldb` )
+
+		echo -e ${prompt};
+
+		select opt in "${options[@]}" "Quit" ; do 
+			if (( REPLY == 1 + ${#options[@]} )) ; then
+				echo -e "${MYSQL_DUMPS_LBLUE}Bye bye!${MYSQL_DUMPS_NC}"
+
+				return
+			elif (( REPLY > 0 && REPLY <= ${#options[@]} )) ; then
+				schema=$opt
+
+				break
+			else
+				echo -e "${MYSQL_DUMPS_RED}This is not an option.${MYSQL_DUMPS_NC}"
+			fi
+		done
+	else
+		schema=$1
+	fi
+
+	dbtest=`mysql --user=root --execute="SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = \"$schema\""`;
+
+	if [ -z "${dbtest}" ]; then 
+		echo -e "${MYSQL_DUMPS_RED}Sorry, this database doesn't exist.${MYSQL_DUMPS_NC}";
+
+		return
+	fi
+
+	if [ -z ${2+x} ]; then
+		dateTime=`date +%Y%m%d%H%M%S`
+
+		dumpFilePath="${MYSQL_DUMPS_DIR}/mysql_${schema}_dump_${dateTime}.sql"
+	else
+		dumpFilePath=$2
+	fi
+
+	mysqldump --user=root -p ${schema} > ${dumpFilePath}
+
+	if [ $? -eq 0 ]; then
+		echo  -e "The dump ${MYSQL_DUMPS_CYAN}${dumpFilePath}${MYSQL_DUMPS_NC} was successfully exported from ${MYSQL_DUMPS_PURPLE}${schema}${MYSQL_DUMPS_NC}."
+	fi
+}
+
+#-----IMPORTS A MYSQL DATABASE-----#
+function idb {
+	echo -e "${MYSQL_DUMPS_GREEN}##--IMPORT DATABASE--##${MYSQL_DUMPS_NC}"
+
+	if [ -z ${1+x} ]; then
+		prompt="${MYSQL_DUMPS_YELLOW}Please select a MySQL database:${MYSQL_DUMPS_NC}"
+		options=( `ldb` )
+
+		echo -e ${prompt};
+
+		select opt in "${options[@]}" "Quit" ; do 
+			if (( REPLY == 1 + ${#options[@]} )) ; then
+				echo -e "${MYSQL_DUMPS_LBLUE}Bye bye!${MYSQL_DUMPS_NC}"
+
+				return
+			elif (( REPLY > 0 && REPLY <= ${#options[@]} )) ; then
+				schema=$opt
+
+				break
+			else
+				echo -e "${MYSQL_DUMPS_RED}This is not an option.${MYSQL_DUMPS_NC}"
+			fi
+		done
+	else
+		schema=$1
+	fi
+
+	dbtest=`mysql --user=root --execute="SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = \"$schema\""`;
+
+	if [ -z "${dbtest}" ]; then 
+		echo -e "${MYSQL_DUMPS_RED}Sorry, this database doesn't exist.${MYSQL_DUMPS_NC}";
+
+		return
+	fi
+
+	if [ -z ${2+x} ]; then
+		prompt="${MYSQL_DUMPS_YELLOW}Please select a dump to import:${MYSQL_DUMPS_NC}"
+		options=( $(find ${MYSQL_DUMPS_DIR} -type f -maxdepth 1 -exec basename {} \;) )
+
+		printf "\n";
+		echo -e ${prompt};
+
+		select file in "${options[@]}" "Quit" ; do 
+			if (( REPLY == 1 + ${#options[@]} )) ; then
+				echo -e "${MYSQL_DUMPS_LBLUE}Bye bye!${MYSQL_DUMPS_NC}"
+
+				return
+			elif (( REPLY > 0 && REPLY <= ${#options[@]} )) ; then
+				mysql --user=root -p ${schema} < ${MYSQL_DUMPS_DIR}/${file};
+
+				break
+			else
+				echo -e "${MYSQL_DUMPS_RED}This is not an option.${MYSQL_DUMPS_NC}"
+			fi
+		done
+	else
+		file=$2
+
+		mysql --user=root -p ${schema} < ${file};
+	fi
+
+	if [ $? -eq 0 ]; then
+		echo  -e "The dump ${MYSQL_DUMPS_CYAN}${file}${MYSQL_DUMPS_NC} was successfully imported to ${MYSQL_DUMPS_PURPLE}${schema}${MYSQL_DUMPS_NC}."
+	fi
+}
+
+#-----CREATES A MYSQL DATABASE-----#
+function ndb {
+	echo -e "${MYSQL_DUMPS_GREEN}##--NEW DATABASE--##${MYSQL_DUMPS_NC}"
+
+	if [ -z ${1+x} ]; then
+		read -p "Please provide a name for the new MySQL database: " schema
+	else
+		schema=$1
+	fi
+
+	mysql --user=root --execute="CREATE SCHEMA ${schema} DEFAULT CHARACTER SET utf8;";
+
+	if [ $? -eq 0 ]; then
+		echo  -e "You successfully created the database ${MYSQL_DUMPS_PURPLE}${schema}${MYSQL_DUMPS_NC}."
+	fi
+}
+
+#-----DELETES A MYSQL DUMP-----#
+function rmd {
+	echo -e "${MYSQL_DUMPS_GREEN}##--DELETE DUMP--##${MYSQL_DUMPS_NC}"
+
+	prompt="${MYSQL_DUMPS_YELLOW}Please select a file to delete from your dumps folder:${MYSQL_DUMPS_NC}"
+	options=( $(find ${MYSQL_DUMPS_DIR} -type f -maxdepth 1 -exec basename {} \;) )
+
+	echo -e ${prompt};
+
+	select file in "${options[@]}" "Quit" ; do 
+		if (( REPLY == 1 + ${#options[@]} )) ; then
+			echo -e "${MYSQL_DUMPS_LBLUE}Bye bye!${MYSQL_DUMPS_NC}"
+
+			return
+		elif (( REPLY > 0 && REPLY <= ${#options[@]} )) ; then
+			rm ${MYSQL_DUMPS_DIR}/${file};
+
+			break
+		else
+			echo -e "${MYSQL_DUMPS_RED}This is not an option.${MYSQL_DUMPS_NC}"
+		fi
+	done
+
+	if [ $? -eq 0 ]; then
+		echo  -e "The dump ${MYSQL_DUMPS_CYAN}${file}${MYSQL_DUMPS_NC} was successfully deleted."
+	fi
+}

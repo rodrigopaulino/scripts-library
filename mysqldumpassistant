@@ -128,7 +128,7 @@ function edb {
 	fi
 
 	if [ -z ${2+x} ]; then
-		dateTime=`date +%Y%m%d%H%M%S`
+		dateTime=`date +%d-%m-%Y_%H:%M:%S`
 
 		dumpFilePath="${MYSQL_DUMPS_DIR}/mysql_${schema}_dump_${dateTime}.sql"
 	else

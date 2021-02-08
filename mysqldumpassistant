@@ -190,6 +190,7 @@ function idb {
 
 				return
 			elif (( REPLY > 0 && REPLY <= ${#options[@]} )) ; then
+				cdb ${schema};
 				mysql --user=root -p ${schema} < ${MYSQL_DUMPS_DIR}/${file};
 
 				break
@@ -200,6 +201,7 @@ function idb {
 	else
 		file=$2
 
+		cdb ${schema};
 		mysql --user=root -p ${schema} < ${file};
 	fi
 
